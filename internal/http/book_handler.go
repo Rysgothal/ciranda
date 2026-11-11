@@ -2,7 +2,6 @@ package http
 
 import "github.com/gin-gonic/gin"
 
-func listBooks(c *gin.Context) {
-	// Validacação do token
-	// Consulta no Banco
+func (s *Server) listBooks(c *gin.Context) {
+
 }

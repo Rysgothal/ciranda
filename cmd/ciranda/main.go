@@ -31,5 +31,7 @@ func run() error {
 		return err
 	}
 	defer db.Close()
-	return http.Init()
+
+	server := http.NewServer(db)
+	return server.Run()
 }
