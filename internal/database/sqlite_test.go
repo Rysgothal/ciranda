@@ -5,7 +5,7 @@ import "testing"
 func TestOpenSQLite(t *testing.T) {
 	db, err := Open(":memory:")
 	if err != nil {
-		t.Fatalf("open SQLite: %v", err)
+		t.Fatalf("Open SQLite: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 
