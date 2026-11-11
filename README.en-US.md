@@ -16,6 +16,8 @@ API for managing the catalog, loans, and returns of a community library.
 ## Stack
 
 - Go
+- SQLite
+- [Framework Gin](github.com/gin-gonic/gin)
 - In development
 
 ## Expected structure (in development)

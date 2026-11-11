@@ -16,6 +16,8 @@ API para gerenciar o acervo, os empréstimos e as devoluções de uma biblioteca
 ## Stack
 
 - Go
+- SQLite
+- [Framework Gin](github.com/gin-gonic/gin)
 - Em desenvolvimento
 
 ## Organização esperada (em desenvolvimento)
