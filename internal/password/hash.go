@@ -1,4 +1,4 @@
-package utils
+package password
 
 import (
 	"crypto/rand"
@@ -16,7 +16,7 @@ const (
 	saltLen              = 16
 )
 
-func HashString(password string) (string, error) {
+func Hash(password string) (string, error) {
 	salt := make([]byte, saltLen)
 	if _, err := rand.Read(salt); err != nil {
 		return "", fmt.Errorf("generate password salt: %w", err)
