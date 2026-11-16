@@ -17,7 +17,8 @@ API para gerenciar o acervo, os empréstimos e as devoluções de uma biblioteca
 
 - Go
 - SQLite
-- [Framework Gin](github.com/gin-gonic/gin)
+- [Framework Gin](https://gin-gonic.com/)
+- [Hash Argon2](https://pkg.go.dev/golang.org/x/crypto/argon2)
 - Em desenvolvimento
 
 ## Organização esperada (em desenvolvimento)

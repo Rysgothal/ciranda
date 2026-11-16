@@ -17,7 +17,8 @@ API for managing the catalog, loans, and returns of a community library.
 
 - Go
 - SQLite
-- [Framework Gin](github.com/gin-gonic/gin)
+- [Framework Gin](https://gin-gonic.com/)
+- [Hash Argon2](https://pkg.go.dev/golang.org/x/crypto/argon2)
 - In development
 
 ## Expected structure (in development)
