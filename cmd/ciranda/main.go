@@ -4,6 +4,7 @@ import (
 	"ciranda/internal/cli"
 	"ciranda/internal/database"
 	"ciranda/internal/http"
+	"context"
 	"database/sql"
 	"log"
 )
@@ -21,6 +22,7 @@ func run() error {
 	var path string
 	var db *sql.DB
 
+	ctx := context.Background()
 	path, err = database.DefaultPath()
 	if err != nil {
 		return err
@@ -31,6 +33,10 @@ func run() error {
 		return err
 	}
 	defer db.Close()
+
+	if err = database.Migrate(ctx, db); err != nil {
+		return err
+	}
 
 	server := http.NewServer(db)
 	return server.Run()
