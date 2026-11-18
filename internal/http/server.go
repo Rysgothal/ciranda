@@ -17,7 +17,7 @@ func NewServer(db *sql.DB) *Server {
 func (s *Server) Run() error {
 	api := gin.Default()
 
-	api.GET("/books", s.listBooks)
+	api.POST("/users", s.CreateUser)
 
 	return api.Run("0.0.0.0:8080")
 }
