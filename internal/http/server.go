@@ -18,6 +18,7 @@ func (s *Server) Run() error {
 	api := gin.Default()
 
 	api.POST("/users", s.CreateUser)
+	api.DELETE("/users/:id", s.DeleteUser)
 
 	return api.Run("0.0.0.0:8080")
 }
