@@ -20,6 +20,10 @@ type CreateUserRequest struct {
 	Email    string `json:"email" validate:"omitempty,email,max=254"`
 	Password string `json:"password" validate:"required,min=8,max=128"`
 }
+type DeleteUserRequest struct {
+	Login    string `json:"login" validate:"required,max=50"`
+	Password string `json:"password" validate:"required,min=8,max=128"`
+}
 
 type UserResponse struct {
 	Name  string `json:"name"`
@@ -40,30 +44,9 @@ func (s *Server) CreateUser(c *gin.Context) {
 	body.Login = strings.TrimSpace(body.Login)
 	body.Email = strings.TrimSpace(body.Email)
 
-	if strings.TrimSpace(body.Name) == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    http.StatusBadRequest,
-			"message": "validation failed",
-			"errors":  gin.H{"name": "name cannot be empty"},
-		})
-		return
-	}
-
-	if strings.TrimSpace(body.Login) == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    http.StatusBadRequest,
-			"message": "validation failed",
-			"errors":  gin.H{"login": "login cannot be empty"},
-		})
-		return
-	}
-
-	if strings.TrimSpace(body.Password) == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    http.StatusBadRequest,
-			"message": "validation failed",
-			"errors":  gin.H{"password": "password cannot be empty"},
-		})
+	if isPropJSONEmpty(c, "name", body.Name) ||
+		isPropJSONEmpty(c, "login", body.Login) ||
+		isPropJSONEmpty(c, "password", body.Password) {
 		return
 	}
 
@@ -115,6 +98,103 @@ func (s *Server) CreateUser(c *gin.Context) {
 		"message": "user created successfully",
 		"user":    responseUser,
 	})
+}
+
+func (s *Server) DeleteUser(c *gin.Context) {
+	var body DeleteUserRequest
+	if err := c.ShouldBindJSON(&body); err != nil {
+		writeRequestValidationError(c, err)
+		return
+	}
+
+	body.Login = strings.TrimSpace(body.Login)
+	if isPropJSONEmpty(c, "login", body.Login) || isPropJSONEmpty(c, "password", body.Password) {
+		return
+	}
+
+	if err := validator.New().Struct(body); err != nil {
+		writeRequestValidationError(c, err)
+		return
+	}
+
+	userID := c.Param("id")
+	var userLogin, userPassword string
+
+	err := s.db.QueryRowContext(c.Request.Context(), "SELECT LOGIN, PASSWORD FROM USERS WHERE ID = ?", userID).Scan(&userLogin, &userPassword)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    http.StatusNotFound,
+			"message": "user not found",
+			"errors":  gin.H{"not_found": "user not found"},
+		})
+		return
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    http.StatusInternalServerError,
+			"message": "failed to delete user",
+			"errors":  gin.H{"internal": "internal error"},
+		})
+		return
+	}
+
+	if userLogin != body.Login {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"code":    http.StatusUnauthorized,
+			"message": "wrong login",
+			"errors":  gin.H{"login": "wrong login"},
+		})
+		return
+	}
+
+	if !password.Verify(body.Password, userPassword) {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"code":    http.StatusUnauthorized,
+			"message": "wrong password",
+			"errors":  gin.H{"password": "wrong password"},
+		})
+		return
+	}
+
+	var result sql.Result
+	result, err = s.db.ExecContext(c.Request.Context(), "DELETE FROM USERS WHERE ID = ?", userID)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    http.StatusInternalServerError,
+			"message": "failed to delete user",
+			"errors":  gin.H{"internal": "internal error"},
+		})
+		return
+	}
+
+	var affected int64
+	affected, err = result.RowsAffected()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    http.StatusInternalServerError,
+			"message": "failed to delete user",
+			"errors":  gin.H{"internal": "internal error"},
+		})
+		return
+	}
+
+	if affected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    http.StatusNotFound,
+			"message": "user not found",
+			"errors":  gin.H{"not_found": "user not found"},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    http.StatusOK,
+		"message": "user deleted successfully",
+	})
+	return
 }
 
 func writeRequestValidationError(c *gin.Context, err error) {
@@ -205,4 +285,18 @@ func writeDBValidationError(c *gin.Context, err error) {
 		"message": "failed to create user",
 		"errors":  errorMessage,
 	})
+}
+
+func isPropJSONEmpty(c *gin.Context, propName string, propValue string) bool {
+	if strings.TrimSpace(propValue) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    http.StatusBadRequest,
+			"message": "validation failed",
+			"errors":  gin.H{propName: fmt.Sprintf("%s cannot be empty", propName)},
+		})
+
+		return true
+	}
+
+	return false
 }
