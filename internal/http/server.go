@@ -19,6 +19,7 @@ func (s *Server) Run() error {
 
 	api.POST("/users", s.CreateUser)
 	api.DELETE("/users/:id", s.DeleteUser)
+	api.PATCH("/users/:id", s.UpdateUser)
 
 	return api.Run("0.0.0.0:8080")
 }
