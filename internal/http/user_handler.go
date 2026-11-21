@@ -20,6 +20,7 @@ type CreateUserRequest struct {
 	Email    string `json:"email" validate:"omitempty,email,max=254"`
 	Password string `json:"password" validate:"required,min=8,max=128"`
 }
+
 type DeleteUserRequest struct {
 	Login    string `json:"login" validate:"required,max=50"`
 	Password string `json:"password" validate:"required,min=8,max=128"`
@@ -170,31 +171,12 @@ func (s *Server) DeleteUser(c *gin.Context) {
 		return
 	}
 
-	var affected int64
-	affected, err = result.RowsAffected()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    http.StatusInternalServerError,
-			"message": "failed to delete user",
-			"errors":  gin.H{"internal": "internal error"},
-		})
-		return
-	}
-
-	if affected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{
-			"code":    http.StatusNotFound,
-			"message": "user not found",
-			"errors":  gin.H{"not_found": "user not found"},
-		})
-		return
-	}
+	writeDBUserNotFound(c, result, err)
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    http.StatusOK,
 		"message": "user deleted successfully",
 	})
-	return
 }
 
 func writeRequestValidationError(c *gin.Context, err error) {
@@ -285,6 +267,28 @@ func writeDBValidationError(c *gin.Context, err error) {
 		"message": "failed to create user",
 		"errors":  errorMessage,
 	})
+}
+
+func writeDBUserNotFound(c *gin.Context, qry sql.Result, err error) {
+	var affected int64
+	affected, err = qry.RowsAffected()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    http.StatusInternalServerError,
+			"message": "failed to delete user",
+			"errors":  gin.H{"internal": "internal error"},
+		})
+		return
+	}
+
+	if affected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    http.StatusNotFound,
+			"message": "user not found",
+			"errors":  gin.H{"not_found": "user not found"},
+		})
+		return
+	}
 }
 
 func isPropJSONEmpty(c *gin.Context, propName string, propValue string) bool {
