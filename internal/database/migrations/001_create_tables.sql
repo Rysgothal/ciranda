@@ -6,14 +6,6 @@ CREATE TABLE users (
     password TEXT NOT NULL CHECK (TRIM(password) <> '')
 );
 
-CREATE TABLE persons (
-    id           INTEGER PRIMARY KEY,
-    user_id      INTEGER UNIQUE NOT NULL,
-    profile_name TEXT,
-
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);
-
 CREATE TABLE sections (
     id   INTEGER PRIMARY KEY,
     name TEXT NOT NULL CHECK (TRIM(name) <> '')
@@ -31,10 +23,10 @@ CREATE TABLE books (
 
 CREATE TABLE loans (
     id              INTEGER PRIMARY KEY,
-    person_id       INTEGER NOT NULL,
+    users_id        INTEGER NOT NULL,
     start_timestamp TEXT NOT NULL CHECK (TRIM(start_timestamp) <> ''),
 
-    FOREIGN KEY (person_id) REFERENCES persons(id)
+    FOREIGN KEY (users_id) REFERENCES users(id)
 );
 
 CREATE TABLE loans_items (
