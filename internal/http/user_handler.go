@@ -171,7 +171,9 @@ func (s *Server) DeleteUser(c *gin.Context) {
 		return
 	}
 
-	writeDBUserNotFound(c, result, err)
+	if writeDBUserNotFound(c, result, err) {
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    http.StatusOK,
@@ -269,7 +271,7 @@ func writeDBValidationError(c *gin.Context, err error) {
 	})
 }
 
-func writeDBUserNotFound(c *gin.Context, qry sql.Result, err error) {
+func writeDBUserNotFound(c *gin.Context, qry sql.Result, err error) bool {
 	var affected int64
 	affected, err = qry.RowsAffected()
 	if err != nil {
@@ -278,7 +280,7 @@ func writeDBUserNotFound(c *gin.Context, qry sql.Result, err error) {
 			"message": "failed to delete user",
 			"errors":  gin.H{"internal": "internal error"},
 		})
-		return
+		return true
 	}
 
 	if affected == 0 {
@@ -287,8 +289,10 @@ func writeDBUserNotFound(c *gin.Context, qry sql.Result, err error) {
 			"message": "user not found",
 			"errors":  gin.H{"not_found": "user not found"},
 		})
-		return
+		return true
 	}
+
+	return false
 }
 
 func isPropJSONEmpty(c *gin.Context, propName string, propValue string) bool {
