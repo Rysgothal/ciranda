@@ -1,78 +1,10 @@
 package http
 
 import (
-	"bytes"
-	"ciranda/internal/database"
-	"database/sql"
-	"encoding/json"
 	stdhttp "net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
-
-	"github.com/gin-gonic/gin"
 )
-
-func newTestRouter(t *testing.T) *gin.Engine {
-	t.Helper()
-
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("open database: %v", err)
-	}
-
-	t.Cleanup(func() {
-		_ = db.Close()
-	})
-
-	if err = database.Migrate(t.Context(), db); err != nil {
-		t.Fatalf("migrate database: %v", err)
-	}
-
-	gin.SetMode(gin.TestMode)
-
-	server := NewServer(db)
-	router := gin.New()
-	router.POST("/users", server.CreateUser)
-	router.DELETE("/users/:id", server.DeleteUser)
-
-	return router
-}
-
-func performDelete(t *testing.T, router stdhttp.Handler, id string, body string) *httptest.ResponseRecorder {
-	t.Helper()
-
-	req := httptest.NewRequest(stdhttp.MethodDelete, "/users/"+id, bytes.NewBufferString(body))
-	req.Header.Set("Content-Type", "application/json")
-
-	res := httptest.NewRecorder()
-	router.ServeHTTP(res, req)
-
-	return res
-}
-
-func performPost(t *testing.T, router stdhttp.Handler, body string) *httptest.ResponseRecorder {
-	t.Helper()
-
-	req := httptest.NewRequest(stdhttp.MethodPost, "/users", bytes.NewBufferString(body))
-	req.Header.Set("Content-Type", "application/json")
-
-	res := httptest.NewRecorder()
-	router.ServeHTTP(res, req)
-
-	return res
-}
-
-func decodeBody(t *testing.T, res *httptest.ResponseRecorder) map[string]any {
-	t.Helper()
-
-	var body map[string]any
-	if err := json.Unmarshal(res.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode response body: %v", err)
-	}
-
-	return body
-}
 
 func TestCreateUserReturnsCreatedUser(t *testing.T) {
 	router := newTestRouter(t)
@@ -231,90 +163,5 @@ func TestCreateUserRejectsDuplicateLogin(t *testing.T) {
 	}
 	if got, want := errors["login"], "user with this login already exists"; got != want {
 		t.Fatalf("expected conflict message %q, got %q", want, got)
-	}
-}
-
-func TestDeleteUserWrongLogin(t *testing.T) {
-	router := newTestRouter(t)
-	_ = performPost(t, router, `{
-		"name": " Ana ",
-		"login": " anabanana ",
-		"email": "ana@banana.com",
-		"password": "AnaBanana123"
-	}`)
-
-	res := performDelete(t, router, "1", `{
-		"login": " beto betando ",
-		"password": "AnaBanana123"
-	}`)
-
-	if res.Code != stdhttp.StatusUnauthorized {
-		t.Fatalf("expected status %d, got %d: %s", stdhttp.StatusUnauthorized, res.Code, res.Body.String())
-	}
-}
-
-func TestDeleteUserWrongPassword(t *testing.T) {
-	router := newTestRouter(t)
-
-	_ = performPost(t, router, `{
-		"name": " Ana ",
-		"login": " anabanana ",
-		"email": "ana@banana.com",
-		"password": "AnaBanana123"
-	}`)
-
-	res := performDelete(t, router, "1", `{
-		"login": " anabanana ",
-		"password": "pass123456"
-	}`)
-
-	if res.Code != stdhttp.StatusUnauthorized {
-		t.Fatalf("expected status %d, got %d: %s", stdhttp.StatusUnauthorized, res.Code, res.Body.String())
-	}
-}
-
-func TestDeleteUserNoID(t *testing.T) {
-	router := newTestRouter(t)
-
-	res := performDelete(t, router, "", `{
-		"login": " anabanana ",
-		"password": "AnaBanana123"
-	}`)
-
-	if res.Code != stdhttp.StatusNotFound {
-		t.Fatalf("expected status %d, got %d: %s", stdhttp.StatusNotFound, res.Code, res.Body.String())
-	}
-}
-
-func TestDeleteUserOK(t *testing.T) {
-	router := newTestRouter(t)
-
-	resPost := performPost(t, router, `{
-		"name": " Ana ",
-		"login": " anabanana ",
-		"email": "ana@banana.com",
-		"password": "AnaBanana123"
-	}`)
-
-	if got, want := resPost.Header().Get("Location"), "/users/1"; got != want {
-		t.Fatalf("expected Location %q, got %q", want, got)
-	}
-
-	res := performDelete(t, router, "1", `{
-		"login": " anabanana ",
-		"password": "AnaBanana123"
-	}`)
-
-	if res.Code != stdhttp.StatusOK {
-		t.Fatalf("expected status %d, got %d: %s", stdhttp.StatusOK, res.Code, res.Body.String())
-	}
-
-	res2 := performDelete(t, router, "1", `{
-		"login": " anabanana ",
-		"password": "AnaBanana123"
-	}`)
-
-	if res2.Code != stdhttp.StatusNotFound {
-		t.Fatalf("expected status %d, got %d: %s", stdhttp.StatusNotFound, res2.Code, res2.Body.String())
 	}
 }
