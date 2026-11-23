@@ -75,6 +75,19 @@ func applySchemaMigrations(ctx context.Context, db *sql.DB, migrations []string)
 		}
 	}
 
+	if err := applyForeignKeys(ctx, db); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func applyForeignKeys(ctx context.Context, db *sql.DB) error {
+	_, err := db.ExecContext(ctx, `PRAGMA foreign_keys = ON`)
+	if err != nil {
+		return fmt.Errorf("enable foreign keys: %w", err)
+	}
+
 	return nil
 }
 
