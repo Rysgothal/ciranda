@@ -12,6 +12,19 @@ import (
 //go:embed migrations/*.sql
 var migrationFiles embed.FS
 
+func Migrate(ctx context.Context, db *sql.DB) error {
+	migrations, err := loadMigrations()
+	if err != nil {
+		return err
+	}
+
+	if err = createSchemaMigrationsTable(ctx, db, migrations); err != nil {
+		return err
+	}
+
+	return applySchemaMigrations(ctx, db, migrations)
+}
+
 func loadMigrations() ([]string, error) {
 	entries, err := fs.ReadDir(migrationFiles, "migrations")
 	if err != nil {
@@ -39,15 +52,6 @@ func loadMigrations() ([]string, error) {
 	return migrations, nil
 }
 
-func Migrate(ctx context.Context, db *sql.DB) error {
-	migrations, err := loadMigrations()
-	if err != nil {
-		return err
-	}
-
-	return createSchemaMigrationsTable(ctx, db, migrations)
-}
-
 func createSchemaMigrationsTable(ctx context.Context, db *sql.DB, migrations []string) error {
 	const querySchemaMigrations = `
 		CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -55,13 +59,18 @@ func createSchemaMigrationsTable(ctx context.Context, db *sql.DB, migrations []s
 			applied_at TEXT NOT NULL
 		);
 	`
+
 	if _, err := db.ExecContext(ctx, querySchemaMigrations); err != nil {
 		return fmt.Errorf("create schema migrations table: %w", err)
 	}
 
+	return nil
+}
+
+func applySchemaMigrations(ctx context.Context, db *sql.DB, migrations []string) error {
 	for i, migration := range migrations {
 		version := i + 1
-		if err := applySchemaMigration(ctx, db, version, migration); err != nil {
+		if err := execMigration(ctx, db, version, migration); err != nil {
 			return fmt.Errorf("apply migration %d: %w", version, err)
 		}
 	}
@@ -69,7 +78,7 @@ func createSchemaMigrationsTable(ctx context.Context, db *sql.DB, migrations []s
 	return nil
 }
 
-func applySchemaMigration(ctx context.Context, db *sql.DB, version int, migration string) error {
+func execMigration(ctx context.Context, db *sql.DB, version int, migration string) error {
 	const queryVerifyMigrationApplied = "SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = ?)"
 	const queryApplyMigration = "INSERT INTO schema_migrations (version, applied_at) VALUES (?, datetime('now'))"
 
